@@ -5,8 +5,8 @@ max = 10                         /* loop exits when the index hits this number (
 _start:
     mov     x19, min
     loop:
-        /* convert loop index to ASCII and store in message buffer */
-        add     w20, w19, '0'        /* convert integer in w19 to ASCII character '0'-'9' */
+        /* convert loop index to ASCII and store it in message buffer */
+        add     w20, w19, #48        /* convert integer in w19 to ASCII character '0'-'9' */
         adr     x21, msg_digit       /* load address of digit placeholder in message buffer */
         strb    w20, [x21]           /* store the digit in the place of the placeholder */
 
