@@ -1,17 +1,20 @@
-BINARIES=hello
+BINARIES=loop1 loop2 loop3
 AS=as
 LD=ld
 
 all:	${BINARIES}
 
-loop:		loop.s
-		${AS}	-g	-o loop.o	loop.s
-		${LD}		-o loop		loop.o
+loop1:		loop1.s
+		${AS}	-g	-o loop1.o	loop1.s
+		${LD}		-o loop1	loop1.o
 
-clean:	
-hello:		hello.s
-		${AS}	-g	-o hello.o	hello.s
-		${LD}		-o hello	hello.o
+loop2:		loop2.s
+		${AS}	-g	-o loop2.o	loop2.s
+		${LD}		-o loop2	loop2.o	
+
+loop2:		loop3.s
+		${AS}	-g	-o loop3.o	loop3.s
+		${LD}		-o loop3	loop3.o	
 
 clean:	
 		rm ${BINARIES} *.o
