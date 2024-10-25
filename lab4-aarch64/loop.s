@@ -51,6 +51,8 @@ _start:
 
 .data
 msg: 	.ascii      "Loop: ##\n"
-msg_digit_1 = msg + 6     /* position of the digit placeholder */
-msg_digit_2 = msg + 7
 len= 	. - msg
+/* positions of the digit placeholder */
+msg_digit_1 = msg + 6     
+msg_digit_2 = msg + 7
+
