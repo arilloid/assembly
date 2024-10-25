@@ -24,13 +24,6 @@ _start:
 
         /* convert first digit to ASCII */
         add     w21, w21, #48       /* convert the 1st digit to ASCII */
-
-        /* replace the first digit with space if = 0; else continue */
-        cmp     w21, #48            /* 48 = 0 in ASCII */
-        b.ne    continue
-        mov     w21, #32            /* 32 = space in ASCII */
-
-    continue:
         adr     x23, msg_digit_1    /* load address of the first digit placeholder in the message buffer */
         strb    w21, [x23]          /* store the first digit in the message buffer */
 
