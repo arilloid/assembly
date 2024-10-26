@@ -5,7 +5,7 @@ max = 31                         /* loop exits when the index hits this number (
 divisor = 10                     /* divisor for 2-digit conversion */
 _start:
     /*
-        register assignmnets
+        register assignments
         ---------------------
         r19 = loop index  
         r20 = divisor
