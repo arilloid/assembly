@@ -1,0 +1,260 @@
+; Constants and Memory Locations
+define INPUT_NUM $0080  ; Storage for user input number
+define RESULT_L $0081   ; Result - low byte
+define RESULT_H $0082   ; Result - high byte
+define TEMP_L $0083     ; Temp - low byte
+define TEMP_H $0084     ; Temp - high byte
+define UNIT_TYPE $0085  ; Unit selection (1=inches, 2=feet)
+
+; Main program entry point
+MAINLOOP:
+    JSR RESET             ; Reset variables
+    JSR PRINT_WELCOME     ; Show welcome message
+    JSR PROMPT_UNIT_INPUT ; Get unit selection
+    JSR GET_NUMBER        ; Get number input
+    JSR CONVERT           ; Convert to centimeters
+    JSR SHOW_RESULT       ; Display the result
+    JMP MAINLOOP          ; Restart
+
+; Initialize all variables to zero
+RESET:
+    LDA #$00
+    STA INPUT_NUM      
+    STA RESULT_L       
+    STA RESULT_H       
+    STA UNIT_TYPE      
+    RTS
+
+PRINT_WELCOME:
+    JSR PRINT
+    DCB "-","-","-","-","-","-","-","-",$0d
+    DCB "L","E","N","G","T","H",32,"C","O","N","V","E","R","T","E","R",$0d
+    DCB "-","-","-","-","-","-","-","-",$0d,00
+    RTS
+
+PROMPT_UNIT_INPUT:
+    JSR PRINT
+    DCB "S","e","l","e","c","t",32,"u","n","i","t",":",$0d
+    DCB "1",32,"-",32,"i","n","c","h","e","s",32,"2",32,"-",32,"f","e","e","t",$0d,$0d
+    DCB "P","r","e","s","s",32,"1",32,"o","r",32,"2",$0d,$0d,00
+
+
+; Get unit selection
+GET_UNIT_INPUT:
+    JSR CHRIN          ; Get input    
+    CMP #$31           ; Check if 1 pressed
+    BEQ UNIT_INCHES
+    CMP #$32           ; Check if 2 pressed
+    BEQ UNIT_FEET
+    
+    JMP GET_UNIT_INPUT ; If neither, keep waiting
+
+; Handle inch selection
+UNIT_INCHES:
+    JSR PRINT
+    DCB "I","n","c","h","e","s",32,"s","e","l","e","c","t","e","d","!",$0d,00
+    LDA #$01
+    STA UNIT_TYPE
+    JMP PROMPT_NUMBER
+
+; Handle feet selection
+UNIT_FEET:
+    JSR PRINT
+    DCB "F","e","e","t",32,"s","e","l","e","c","t","e","d","!",$0d,00
+    LDA #$02
+    STA UNIT_TYPE
+    JMP PROMPT_NUMBER
+
+PROMPT_NUMBER:
+    JSR PRINT
+    DCB $0d,"E","N","T","E","R",32,"N","U","M","B","E","R",32
+    DCB "(","0","-","9",")",":"
+    DCB 32,00
+    RTS
+
+; Get number from user
+GET_NUMBER:
+    LDA #$00
+    STA INPUT_NUM      ; Clear input storage
+
+READ_DIGIT:
+    JSR CHRIN          ; Get character from keyboard
+    CMP #$0d           ; Check for ENTER key
+    BEQ PROCESS_NUMBER
+    
+    CMP #$30           ; Check if less than 0
+    BCC READ_DIGIT
+    CMP #$3a           ; Check if greater than 9
+    BCS READ_DIGIT
+    
+    CPX #$01           ; Already have a digit?
+    BCS READ_DIGIT     ; If yes, ignore
+    
+    PHA                ; Save digit temporarily
+    JSR CHROUT         ; Display it
+    PLA                ; Retrieve digit
+    
+    AND #$0f           ; Convert from ASCII to binary
+    STA INPUT_NUM      ; Store directly
+    INX
+    JMP READ_DIGIT
+
+; Process completed number input
+PROCESS_NUMBER:
+    LDA #$0d           ; Print newline
+    JSR CHROUT
+    LDA INPUT_NUM      ; Load final number
+    CPX #$00           ; Check if no digits entered
+    BEQ READ_DIGIT     ; If none, keep waiting
+    RTS
+
+; Convert number based on selected unit
+CONVERT:
+    SED                ; Set decimal mode for BCD math
+    LDA INPUT_NUM
+    STA RESULT_L       ; Store initial value
+    LDA #$00
+    STA RESULT_H
+
+    LDA UNIT_TYPE      ; Check which conversion to do
+    CMP #$01
+    BEQ CONVERT_INCHES
+    JMP CONVERT_FEET
+
+; Convert inches to centimeters (×3)
+CONVERT_INCHES:
+    LDA INPUT_NUM
+    CLC
+    ADC INPUT_NUM      ; ×2
+    CLC
+    ADC INPUT_NUM      ; ×3
+    STA RESULT_L
+    LDA #$00           ; Clear high byte
+    STA RESULT_H
+    CLD
+    RTS
+
+; Convert feet to centimeters (×30)
+CONVERT_FEET:
+    SED                ; Set decimal mode (for BCD math)
+
+    ; Multiply by 10
+    LDA INPUT_NUM
+    STA RESULT_L       ; Store in RESULT_L
+    LDA #$00
+    STA RESULT_H       ; Clear high byte (start at zero)
+
+    LDX #$09           ; Loop 9 times to add the number to itself (×10)
+multiply_by_10:
+    CLC
+    LDA RESULT_L
+    ADC INPUT_NUM
+    STA RESULT_L
+    LDA RESULT_H
+    ADC #$00
+    STA RESULT_H
+    DEX
+    BNE multiply_by_10
+
+    ; Store the result of ×10 in a temporary variable
+    LDA RESULT_L
+    STA TEMP_L         ; Store low byte
+    LDA RESULT_H
+    STA TEMP_H         ; Store high byte
+
+    ; Multiply by 3 (add twice more)
+    LDY #$02           ; Loop 2 times to add the current result to itself
+multiply_by_3:
+    CLC
+    LDA RESULT_L
+    ADC TEMP_L
+    STA RESULT_L
+    LDA RESULT_H
+    ADC TEMP_H
+    STA RESULT_H
+    DEY
+    BNE multiply_by_3
+
+    CLD                ; Clear decimal mode
+    RTS
+
+SHOW_RESULT:
+    JSR PRINT
+    DCB $0d,"R","E","S","U","L","T",":",32,00
+
+    ; Display hundreds digit if present
+    LDA RESULT_H
+    BEQ NO_HUNDREDS
+    ORA #$30
+    JSR CHROUT
+
+; Display tens and ones digits
+NO_HUNDREDS:
+    LDA RESULT_L       ; Get tens digit
+    AND #$f0           ; Mask off ones digit
+    LSR                ; Shift right 4 times
+    LSR
+    LSR
+    LSR
+    ORA #$30           ; Convert to ASCII
+    JSR CHROUT
+
+    LDA RESULT_L       ; Get ones digit
+    AND #$0f           ; Mask off tens digit
+    ORA #$30           ; Convert to ASCII
+    JSR CHROUT
+
+    JSR PRINT
+    DCB 32,"C","M",$0d                          
+    DCB "-","-","-","-","-","-","-","-","-","-",$0d,$0d,00  
+    RTS
+
+
+; ROM routines
+define CHRIN $ffcf      ; Keyboard input
+define CHROUT $ffd2     ; Character output
+
+; zeropage variables
+define		PRINT_PTR	$00
+define		PRINT_PTR_H	$01
+
+; Credit:
+; Author - Chris Tyler 
+; Source link: https://github.com/ctyler/6502js-code/blob/master/colour-selector-live.6502
+; ----------------------------------------------------------------------------------------
+PRINT:        pla
+        clc
+        adc #$01
+        sta PRINT_PTR
+        pla
+        sta PRINT_PTR_H
+
+        tya
+        pha
+
+        ldy #$00
+print_next:    lda (PRINT_PTR),y
+        beq print_done
+
+        jsr CHROUT
+        iny
+        jmp print_next
+
+print_done:    tya
+        clc
+        adc PRINT_PTR
+        sta PRINT_PTR
+
+        lda PRINT_PTR_H
+        adc #$00
+        sta PRINT_PTR_H
+
+        pla
+        tay
+
+        lda PRINT_PTR_H
+        pha
+        lda PRINT_PTR
+        pha
+
+        rts
